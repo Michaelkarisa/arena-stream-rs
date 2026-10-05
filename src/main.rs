@@ -6,6 +6,7 @@ mod ingest;
 mod model;
 mod overlay;
 mod pipeline;
+mod manage;
 
 use tracing_subscriber::EnvFilter;
 
@@ -21,13 +22,15 @@ async fn main() -> anyhow::Result<()> {
     let video = tokio::spawn(ingest::udp_video::run());
     let audio = tokio::spawn(ingest::udp_audio::run());
     let control = tokio::spawn(control::run());
-
+    let manage = tokio::spawn(manage::run());
+//add manage net
     tokio::spawn(inactivity_reaper());
 
     tokio::select! {
         r = video => tracing::error!("video ingest task exited: {r:?}"),
         r = audio => tracing::error!("audio ingest task exited: {r:?}"),
         r = control => tracing::error!("control socket task exited: {r:?}"),
+        r = manage => tracing::error!("manage socket task exited: {r:?}"),
     }
 
     Ok(())
@@ -75,3 +78,5 @@ async fn inactivity_reaper() {
         }
     }
 }
+
+//views will be derived(fetched) from the social media via the social media streamkeys supplied under urls map sent when registering for youtube use the youtube streamkey and facebook the same. 

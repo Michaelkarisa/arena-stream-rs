@@ -6,7 +6,7 @@
 pub const TCP_CONTROL_PORT: u16 = 5000;
 pub const UDP_VIDEO_PORT: u16 = 5001;
 pub const UDP_AUDIO_PORT: u16 = 5002;
-pub const TEST_NET_PORT: u16 = 5003;
+pub const MANAGE_NET_PORT: u16 = 5003;//for network management all cameras in a session except the live one will send idr every 10 sec to server to test network by averaging the speed of all can estimate the live device network strength and adjust the frame rates by dumping some p frames, if total frame rates is 30fps and network has dumped by 10% tell live device to cap frames to 27fps the most allowable drop is to 18fps beyond that the video will become too slugish. do not cut or remove adjacent frames but space them this will happen on the android device. ie 0,33,66,99,132,165...990, in a skip 10% will skip 33 if 0 is idr so will be 33(frame2) then 462(frame14) then 957(frame28or29 if total frames are not exactly 30 or exactly 30 never the last.) never drop an idr.
 // ── Ingest ───────────────────────────────────────────────────────────────
 pub const UDP_RECV_BUFFER_BYTES: usize = 4 * 1024 * 1024;
 pub const MAX_AUDIO_FRAME_BYTES: usize = 4096;

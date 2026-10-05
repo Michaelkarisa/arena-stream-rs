@@ -1760,3 +1760,22 @@ pub fn draw_substitutes_table_widget(sub_table: &mut SubstitutionTable, g: &mut 
     draw_substitutes_table_header(g, sub_table, table_x, table_y, table_width, header_height, team_accent_color, image_cache);
     draw_substitutes_table_rows(g, sub_table, table_x, table_y + header_height, table_width, row_height, team_accent_color);
 }
+
+//add 3d graphics instead of the lineup being a 2d football field make it 3d same as what supersport does and animations like when changing the scores you can add bounce where the score changes when with a a bounce and enlarge.
+//add spin animations to the platform logo.
+//add league logo to top left and also when there is a transition after every every event ie substituion, goal, or match perfomance widget.
+// on every match performance widget add the scores, team logos, league logo, and time and the scorers with the time(minute) they scored. remove the card style layout use a single widget style stitched together.
+// do this to all the widgets make them float. do not use cards ie ,
+//|[league logo] [time][team logo][0][vs][0][team logo]           [ads logo]
+//|
+//|
+//|            //goal
+//|       [team logo][0][vs][team logo]
+//|               [player name]  
+//|
+//|
+//|
+//|
+//|
+//|[platform logo]                           [payment banners for each match if other match is true]    
+
