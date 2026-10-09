@@ -6,7 +6,59 @@
 pub const TCP_CONTROL_PORT: u16 = 5000;
 pub const UDP_VIDEO_PORT: u16 = 5001;
 pub const UDP_AUDIO_PORT: u16 = 5002;
-pub const MANAGE_NET_PORT: u16 = 5003;//for network management all cameras in a session except the live one will send idr every 10 sec to server to test network by averaging the speed of all can estimate the live device network strength and adjust the frame rates by dumping some p frames, if total frame rates is 30fps and network has dumped by 10% tell live device to cap frames to 27fps the most allowable drop is to 18fps beyond that the video will become too slugish. do not cut or remove adjacent frames but space them this will happen on the android device. ie 0,33,66,99,132,165...990, in a skip 10% will skip 33 if 0 is idr so will be 33(frame2) then 462(frame14) then 957(frame28or29 if total frames are not exactly 30 or exactly 30 never the last.) never drop an idr.
+/// Network-management socket — see `manage` module docs for the protocol.
+pub const MANAGE_NET_PORT: u16 = 5003;
+
+// ── Manage net (adaptive frame-rate cap for the live camera) ────────────
+/// Standby cameras (every camera in a session except the live one) each send
+/// one IDR frame over the manage socket about this often. Informational: the
+/// cadence is driven by the devices; the server only uses it to size the
+/// freshness window below.
+pub const MANAGE_PROBE_INTERVAL_MS: u64 = 10_000;
+/// A probe sample older than this no longer counts toward the average
+/// (three missed probe cycles).
+pub const MANAGE_SAMPLE_TTL_MS: i64 = 3 * MANAGE_PROBE_INTERVAL_MS as i64;
+/// Probe payload bounds. Below MIN there is nothing meaningful to time; above
+/// MAX is not an IDR any phone should produce (a 4K IDR is well under this).
+pub const MANAGE_PROBE_MIN_BYTES: usize = 1024;
+pub const MANAGE_PROBE_MAX_BYTES: usize = 4 * 1024 * 1024;
+/// If a probe body hasn't fully arrived by this long, the partial transfer
+/// is recorded as a (very low) sample and the connection is dropped.
+pub const MANAGE_PROBE_BODY_TIMEOUT_MS: u64 = 15_000;
+/// How many recent session-average readings the "healthy network" baseline
+/// (their maximum) is taken from. ~30 readings is a few minutes with a
+/// couple of standby cameras probing every 10 s, so the baseline follows a
+/// genuinely changed venue network instead of being pinned forever to the
+/// best moment of the match.
+pub const MANAGE_BASELINE_WINDOW: usize = 30;
+/// Re-evaluation tick (also catches `switch` changing who is live, and
+/// samples expiring).
+pub const MANAGE_EVAL_INTERVAL_MS: u64 = 5_000;
+/// Throughput drops smaller than this fraction are treated as noise.
+pub const MANAGE_DROP_DEADBAND: f64 = 0.03;
+/// Frame-rate the live device runs at when the network is healthy, and the
+/// floor it is never capped below (a 40% drop; slower looks sluggish).
+pub const MANAGE_BASE_FPS: u32 = 30;
+pub const MANAGE_MIN_FPS: u32 = 18;
+
+// ── Social viewer counts ─────────────────────────────────────────────────
+/// How often each session's YouTube/Facebook viewer counts are fetched.
+/// Deliberately slower than `METRICS_REPORT_INTERVAL_MS` (the reaper reports
+/// the cached value on that tick) so a long stream stays well inside the
+/// YouTube Data API's daily quota.
+pub const VIEWER_POLL_INTERVAL_MS: u64 = 30_000;
+/// YouTube: either a ready OAuth access token of the channel owner, or a
+/// refresh-token trio (preferred — access tokens expire after an hour).
+pub const YOUTUBE_ACCESS_TOKEN_ENV: &str = "ARENA_YOUTUBE_ACCESS_TOKEN";
+pub const YOUTUBE_CLIENT_ID_ENV: &str = "ARENA_YOUTUBE_CLIENT_ID";
+pub const YOUTUBE_CLIENT_SECRET_ENV: &str = "ARENA_YOUTUBE_CLIENT_SECRET";
+pub const YOUTUBE_REFRESH_TOKEN_ENV: &str = "ARENA_YOUTUBE_REFRESH_TOKEN";
+/// Facebook: a Page (or user) access token able to read `live_videos`,
+/// optional page id (defaults to `me`) and Graph API version.
+pub const FACEBOOK_ACCESS_TOKEN_ENV: &str = "ARENA_FACEBOOK_ACCESS_TOKEN";
+pub const FACEBOOK_PAGE_ID_ENV: &str = "ARENA_FACEBOOK_PAGE_ID";
+pub const FACEBOOK_GRAPH_VERSION_ENV: &str = "ARENA_FACEBOOK_GRAPH_VERSION";
+
 // ── Ingest ───────────────────────────────────────────────────────────────
 pub const UDP_RECV_BUFFER_BYTES: usize = 4 * 1024 * 1024;
 pub const MAX_AUDIO_FRAME_BYTES: usize = 4096;

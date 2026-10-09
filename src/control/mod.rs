@@ -42,6 +42,8 @@ struct PendingRegistration {
     quality: i32,
     match_data: Option<Value>,
     other_match_data: Option<Value>,
+    /// Social-platform stream keys from the `urls` map — see `social`.
+    platform_keys: Vec<(crate::social::Platform, String)>,
 }
 static PENDING_REGISTRATIONS: Lazy<DashMap<String, PendingRegistration>> = Lazy::new(DashMap::new);
 
@@ -122,9 +124,22 @@ async fn handle_connection(socket: TcpStream, peer_ip: String) -> anyhow::Result
                         .and_then(|d| d.get("quality"))
                         .and_then(Value::as_i64)
                         .unwrap_or(720) as i32;
+                    // `urls` map of social platforms -> stream key/url, either
+                    // top-level or next to `quality` under `data`.
+                    let platform_keys = cmd
+                        .get("urls")
+                        .or_else(|| cmd.get("data").and_then(|d| d.get("urls")))
+                        .map(crate::social::parse_urls)
+                        .unwrap_or_default();
+                    if let Some(session) = REGISTRY.get(key) {
+                        for (platform, k) in &platform_keys {
+                            session.set_platform_key(platform.as_str(), k.clone());
+                        }
+                    }
                     PENDING_REGISTRATIONS.insert(
                         key.clone(),
                         PendingRegistration {
+                            platform_keys,
                             quality,
                             match_data: cmd.get("matchData").cloned().filter(|v| !v.is_null()),
                             other_match_data: cmd.get("otherMatchData").cloned().filter(|v| !v.is_null()),
@@ -159,6 +174,7 @@ async fn handle_connection(socket: TcpStream, peer_ip: String) -> anyhow::Result
                     let pending = PENDING_REGISTRATIONS.remove(&key).map(|(_, p)| p);
                     let quality = pending.as_ref().map(|p| p.quality).unwrap_or(720);
                     let (canvas_w, canvas_h) = crate::config::canvas_dims_for_quality(quality);
+                    let platform_keys = pending.as_ref().map(|p| p.platform_keys.clone()).unwrap_or_default();
 
                     // matchData/otherMatchData travel with "register" (see
                     // that handler), but are only "sufficient" if they
@@ -182,6 +198,10 @@ async fn handle_connection(socket: TcpStream, peer_ip: String) -> anyhow::Result
                             REGISTRY.put(&key, session.clone());
                             REGISTRY.register_ip(&peer_ip, &key);
                             session.clients.insert(peer_ip.clone());
+                            for (platform, k) in platform_keys {
+                                session.set_platform_key(platform.as_str(), k);
+                            }
+                            crate::social::spawn_poller(session.clone());
                             *session.current_streamer.write().unwrap() = Some(peer_ip.clone());
                             // Wire the client that issued `start` in as the
                             // primary camera — see model::CameraInput and

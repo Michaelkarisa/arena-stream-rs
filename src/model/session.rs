@@ -129,6 +129,13 @@ pub struct StreamSession {
     /// a property of the broadcaster (the match's author), not the session.
     pub broadcaster_id: RwLock<Option<String>>,
 
+    /// Social-platform ingest keys supplied under the `urls` map of `register`
+    /// (platform name `"youtube"`/`"facebook"` -> bare stream key). Used only
+    /// to look up that platform's live viewer count — see `social`.
+    pub platform_keys: DashMap<String, String>,
+    /// Latest viewer count fetched per platform (same keys as above).
+    pub platform_views: DashMap<String, u64>,
+
     pub pipeline: gst::Pipeline,
 
     // Three inputs (2.1 in the design doc).
@@ -217,6 +224,8 @@ impl StreamSession {
             canvas_h,
             laravel_id: RwLock::new(None),
             broadcaster_id: RwLock::new(None),
+            platform_keys: DashMap::new(),
+            platform_views: DashMap::new(),
             pipeline,
             video_appsrc,
             audio_appsrc,
@@ -314,6 +323,16 @@ impl StreamSession {
     /// `StreamSessionService::create` and returned alongside the session id.
     pub fn set_broadcaster_id(&self, id: String) {
         *self.broadcaster_id.write().unwrap() = Some(id);
+    }
+
+    pub fn set_platform_key(&self, platform: &str, key: String) {
+        self.platform_keys.insert(platform.to_string(), key);
+    }
+
+    /// Snapshot of `(platform, latest viewer count)` for every platform that
+    /// has been fetched at least once. Empty until the first successful poll.
+    pub fn platform_views_snapshot(&self) -> Vec<(String, u64)> {
+        self.platform_views.iter().map(|e| (e.key().clone(), *e.value())).collect()
     }
 
     pub fn stop(&self) {
